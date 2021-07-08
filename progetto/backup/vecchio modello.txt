@@ -1,0 +1,47 @@
+def create_model():
+  model = keras.models.Sequential() 
+  model.add(keras.layers.Conv2D(filters = 128, kernel_size=(5,5), padding='same', activation='relu', input_shape=(img_width, img_height, 3)))
+  model.add(keras.layers.MaxPooling2D(2,2))
+  model.add(keras.layers.Conv2D(filters = 128, kernel_size=(5,5), padding='same', activation='relu'))
+  model.add(keras.layers.MaxPooling2D(2,2))
+  model.add(keras.layers.Conv2D(filters = 256, kernel_size=(5,5), padding='same', activation='relu'))
+  model.add(keras.layers.MaxPooling2D(2,2))
+  model.add(keras.layers.Conv2D(filters = 256, kernel_size=(5,5), padding='same', activation='relu'))
+  model.add(keras.layers.MaxPooling2D(2,2))
+  model.add(keras.layers.Conv2D(filters = 512, kernel_size=(3,3), padding='same', activation='relu'))
+  model.add(keras.layers.Flatten())
+  model.add(keras.layers.Dense(2048, activation='relu'))
+  model.add(keras.layers.Dense(512, activation='relu'))
+  model.add(keras.layers.Dense(20, activation='softmax'))
+
+  model.compile(loss=keras.losses.CategoricalCrossentropy(from_logits=False), optimizer=keras.optimizers.Adam() ,metrics=['accuracy'])
+
+  return model
+
+!pip install foolbox==3.3.1
+from foolbox.models import TensorFlowModel
+model_foolbox = TensorFlowModel(network, bounds=(0,1))
+from foolbox.attacks import FGSM
+attack = FGSM()
+
+imgs = next(test_generator)
+
+x_true = imgs[0]
+y_true = imgs[1]
+y_pred = network.predict(x_true)
+acc = np.mean((np.argmax(y_true,-1)==np.argmax(y_pred,-1)))
+print("Accuracy iniziale:")
+print(acc)
+
+from tensorflow import convert_to_tensor
+preclip, x_advs, res = attack(
+    model_foolbox,convert_to_tensor(x_true),
+    convert_to_tensor(np.argmax(y_true,-1)), 
+    epsilons=0.05)
+x_advs = x_advs.numpy()
+
+y_pred_adv = network.predict(x_advs)
+acc = np.mean((np.argmax(y_pred_adv,-1)==np.argmax(y_true,-1)))
+print("Accuracy dopo l'attacco")
+print(acc)
+print(res)
